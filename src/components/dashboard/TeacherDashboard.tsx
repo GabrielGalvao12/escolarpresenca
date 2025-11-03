@@ -2,12 +2,22 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, MapPin, Calendar } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import AttendanceMap from "@/components/teacher/AttendanceMap";
 import AttendanceList from "@/components/teacher/AttendanceList";
 
 const TeacherDashboard = () => {
   const [attendances, setAttendances] = useState<any[]>([]);
+  const [allAttendances, setAllAttendances] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [filters, setFilters] = useState({
+    date: new Date().toISOString().split("T")[0],
+    classId: "all",
+    studentId: "all",
+  });
   const [stats, setStats] = useState({
     totalStudents: 0,
     presentToday: 0,
@@ -16,7 +26,52 @@ const TeacherDashboard = () => {
 
   useEffect(() => {
     loadData();
+    loadClasses();
   }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [filters, allAttendances]);
+
+  const loadClasses = async () => {
+    const { data } = await supabase
+      .from("classes")
+      .select("*")
+      .order("name");
+
+    if (data) {
+      setClasses(data);
+    }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...allAttendances];
+
+    // Filter by date
+    if (filters.date) {
+      filtered = filtered.filter(a => a.attendance_date === filters.date);
+    }
+
+    // Filter by class
+    if (filters.classId !== "all") {
+      filtered = filtered.filter(a => a.profiles?.class_id === filters.classId);
+    }
+
+    // Filter by student
+    if (filters.studentId !== "all") {
+      filtered = filtered.filter(a => a.student_id === filters.studentId);
+    }
+
+    setAttendances(filtered);
+
+    // Update stats based on filtered data
+    const validCount = filtered.filter(a => a.is_valid).length;
+    setStats(prev => ({
+      ...prev,
+      presentToday: filtered.length,
+      validAttendances: validCount,
+    }));
+  };
 
   const loadData = async () => {
     // Load all profiles
@@ -37,20 +92,25 @@ const TeacherDashboard = () => {
         *,
         profiles:student_id (
           full_name,
-          registration_number
+          registration_number,
+          class_id
         )
       `)
-      .eq("attendance_date", today)
+      .order("attendance_date", { ascending: false })
       .order("attendance_time", { ascending: false });
 
     if (attendancesData) {
-      setAttendances(attendancesData);
+      setAllAttendances(attendancesData);
       
-      const validCount = attendancesData.filter(a => a.is_valid).length;
+      // Filter for today
+      const todayAttendances = attendancesData.filter(a => a.attendance_date === today);
+      setAttendances(todayAttendances);
+      
+      const validCount = todayAttendances.filter(a => a.is_valid).length;
       
       setStats({
         totalStudents: profilesData?.length || 0,
-        presentToday: attendancesData.length,
+        presentToday: todayAttendances.length,
         validAttendances: validCount,
       });
     }
@@ -101,9 +161,67 @@ const TeacherDashboard = () => {
         </Card>
       </div>
 
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Filtros</CardTitle>
+          <CardDescription>Filtre as presenças por data, turma ou aluno</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label>Data</Label>
+              <input
+                type="date"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={filters.date}
+                onChange={(e) => setFilters({ ...filters, date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Turma</Label>
+              <Select
+                value={filters.classId}
+                onValueChange={(value) => setFilters({ ...filters, classId: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as turmas</SelectItem>
+                  {classes.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Aluno</Label>
+              <Select
+                value={filters.studentId}
+                onValueChange={(value) => setFilters({ ...filters, studentId: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os alunos</SelectItem>
+                  {profiles.map((profile) => (
+                    <SelectItem key={profile.id} value={profile.id}>
+                      {profile.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <AttendanceMap attendances={attendances} />
       
-      <AttendanceList attendances={attendances} />
+      <AttendanceList attendances={attendances} showExport={true} />
     </div>
   );
 };

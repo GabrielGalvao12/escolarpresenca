@@ -1,23 +1,80 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Users, CheckCircle2, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Users, CheckCircle2, XCircle, Download, FileText } from "lucide-react";
+import { toast } from "sonner";
 
 interface AttendanceListProps {
   attendances: any[];
+  showExport?: boolean;
 }
 
-const AttendanceList = ({ attendances }: AttendanceListProps) => {
+const AttendanceList = ({ attendances, showExport = false }: AttendanceListProps) => {
+  const exportToCSV = () => {
+    if (attendances.length === 0) {
+      toast.error("Não há dados para exportar");
+      return;
+    }
+
+    const headers = ["Nome", "Matrícula", "Horário", "Data", "Distância (m)", "Status"];
+    const rows = attendances.map((a) => [
+      a.profiles?.full_name || "",
+      a.profiles?.registration_number || "",
+      a.attendance_time || "",
+      a.attendance_date || "",
+      Math.round(a.distance_meters || 0),
+      a.is_valid ? "Válida" : "Fora do raio",
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `presencas_${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success("Arquivo CSV exportado com sucesso!");
+  };
+
+  const exportToPDF = () => {
+    toast.info("Funcionalidade de exportação PDF em desenvolvimento");
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Users className="w-5 h-5" />
-          Lista de Presenças de Hoje
-        </CardTitle>
-        <CardDescription>
-          {attendances.length} {attendances.length === 1 ? 'aluno presente' : 'alunos presentes'}
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Lista de Presenças de Hoje
+            </CardTitle>
+            <CardDescription>
+              {attendances.length} {attendances.length === 1 ? 'aluno presente' : 'alunos presentes'}
+            </CardDescription>
+          </div>
+          {showExport && attendances.length > 0 && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={exportToCSV}>
+                <FileText className="w-4 h-4 mr-2" />
+                CSV
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportToPDF}>
+                <Download className="w-4 h-4 mr-2" />
+                PDF
+              </Button>
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {attendances.length === 0 ? (

@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import StudentDashboard from "@/components/dashboard/StudentDashboard";
 import TeacherDashboard from "@/components/dashboard/TeacherDashboard";
+import AdminDashboard from "@/components/dashboard/AdminDashboard";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<"student" | "teacher" | null>(null);
+  const [userRole, setUserRole] = useState<"student" | "teacher" | "admin" | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,7 +32,7 @@ const Dashboard = () => {
         .single();
 
       if (roleData) {
-        setUserRole(roleData.role as "student" | "teacher");
+        setUserRole(roleData.role as "student" | "teacher" | "admin");
       }
 
       setLoading(false);
@@ -75,6 +76,7 @@ const Dashboard = () => {
       <main className="container mx-auto px-4 py-8">
         {userRole === "student" && userId && <StudentDashboard userId={userId} />}
         {userRole === "teacher" && <TeacherDashboard />}
+        {userRole === "admin" && <AdminDashboard />}
         {!userRole && (
           <div className="text-center py-12">
             <p className="text-muted-foreground">Carregando informações do usuário...</p>

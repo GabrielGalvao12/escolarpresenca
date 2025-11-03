@@ -58,8 +58,33 @@ export type Database = {
           },
         ]
       }
+      classes: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          class_id: string | null
           created_at: string | null
           email: string
           face_descriptors: Json | null
@@ -70,6 +95,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          class_id?: string | null
           created_at?: string | null
           email: string
           face_descriptors?: Json | null
@@ -80,6 +106,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          class_id?: string | null
           created_at?: string | null
           email?: string
           face_descriptors?: Json | null
@@ -89,7 +116,15 @@ export type Database = {
           registration_number?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       school_location: {
         Row: {

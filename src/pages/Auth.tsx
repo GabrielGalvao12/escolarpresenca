@@ -12,11 +12,13 @@ import { Loader2, GraduationCap } from "lucide-react";
 const Auth = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [classes, setClasses] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     fullName: "",
     registrationNumber: "",
+    classId: "",
   });
 
   useEffect(() => {
@@ -27,6 +29,7 @@ const Auth = () => {
       }
     };
     checkUser();
+    loadClasses();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
@@ -36,6 +39,17 @@ const Auth = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const loadClasses = async () => {
+    const { data } = await supabase
+      .from("classes")
+      .select("*")
+      .order("name");
+
+    if (data) {
+      setClasses(data);
+    }
+  };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +61,7 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data: authData, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -60,6 +74,14 @@ const Auth = () => {
       });
 
       if (error) throw error;
+
+      // Update profile with class if provided
+      if (authData.user && formData.classId) {
+        await supabase
+          .from("profiles")
+          .update({ class_id: formData.classId })
+          .eq("id", authData.user.id);
+      }
 
       toast.success("Cadastro realizado com sucesso! Faça login para continuar.");
     } catch (error: any) {
@@ -197,6 +219,23 @@ const Auth = () => {
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     disabled={loading}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-class">Turma (opcional)</Label>
+                  <select
+                    id="signup-class"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={formData.classId}
+                    onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
+                    disabled={loading}
+                  >
+                    <option value="">Selecione uma turma</option>
+                    {classes.map((cls) => (
+                      <option key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? (
