@@ -50,6 +50,15 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
 
   const startVideo = async () => {
     try {
+      console.log("Solicitando permissão de câmera...");
+      
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        toast.error("Seu navegador não suporta acesso à câmera. Use HTTPS ou localhost.");
+        setLoading(false);
+        return;
+      }
+
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: "user",
@@ -58,23 +67,38 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
         },
       });
       
+      console.log("Permissão concedida, iniciando vídeo...");
+      
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         setStream(mediaStream);
         
-        // Ensure video plays
-        try {
-          await videoRef.current.play();
-          setLoading(false);
-        } catch (playError) {
-          console.error("Error playing video:", playError);
-          toast.error("Erro ao iniciar vídeo da câmera");
-          setLoading(false);
-        }
+        // Wait for video metadata to load
+        videoRef.current.onloadedmetadata = async () => {
+          try {
+            await videoRef.current!.play();
+            console.log("Vídeo iniciado com sucesso");
+            setLoading(false);
+          } catch (playError) {
+            console.error("Erro ao reproduzir vídeo:", playError);
+            toast.error("Erro ao iniciar vídeo da câmera");
+            setLoading(false);
+          }
+        };
       }
-    } catch (error) {
-      console.error("Error accessing camera:", error);
-      toast.error("Erro ao acessar câmera. Verifique as permissões.");
+    } catch (error: any) {
+      console.error("Erro ao acessar câmera:", error);
+      
+      if (error.name === "NotAllowedError") {
+        toast.error("Permissão de câmera negada. Por favor, permita o acesso à câmera.");
+      } else if (error.name === "NotFoundError") {
+        toast.error("Nenhuma câmera encontrada no dispositivo.");
+      } else if (error.name === "NotReadableError") {
+        toast.error("Câmera está em uso por outro aplicativo.");
+      } else {
+        toast.error("Erro ao acessar câmera. Verifique se está usando HTTPS ou localhost.");
+      }
+      
       setLoading(false);
     }
   };
