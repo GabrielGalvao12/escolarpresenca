@@ -35,18 +35,31 @@ const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
   const loadModels = async () => {
     try {
       console.log("Carregando modelos de reconhecimento facial...");
-      const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/models";
-      
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-      ]);
-      
-      console.log("Modelos carregados com sucesso");
+
+      // Caminho local (mais rápido e confiável)
+      const LOCAL_MODEL_URL = "/models";
+      const CDN_MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model";
+
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(LOCAL_MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(LOCAL_MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(LOCAL_MODEL_URL),
+        ]);
+        console.log("✅ Modelos carregados localmente com sucesso");
+      } catch (localError) {
+        console.warn("⚠️ Modelos locais não encontrados, tentando CDN...");
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(CDN_MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(CDN_MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(CDN_MODEL_URL),
+        ]);
+        console.log("✅ Modelos carregados via CDN com sucesso");
+      }
+
       setModelsLoaded(true);
     } catch (error) {
-      console.error("Error loading models:", error);
+      console.error("❌ Erro ao carregar modelos:", error);
       toast.error("Erro ao carregar modelos de reconhecimento facial");
       setLoading(false);
     }
@@ -54,7 +67,12 @@ const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
 
   const startVideo = async () => {
     try {
-      console.log("Solicitando permissão de câmera...");
+      console.log("🎥 Solicitando permissão de câmera...");
+      
+      // Verificar se está em ambiente seguro
+      if (window.location.protocol !== "https:" && window.location.hostname !== "localhost") {
+        toast.warning("⚠️ A câmera funciona melhor em HTTPS ou localhost");
+      }
       
       // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -71,7 +89,7 @@ const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
         },
       });
       
-      console.log("Permissão concedida, iniciando vídeo...");
+      console.log("✅ Permissão concedida, iniciando vídeo...");
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
@@ -81,26 +99,26 @@ const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
         videoRef.current.onloadedmetadata = async () => {
           try {
             await videoRef.current!.play();
-            console.log("Vídeo iniciado com sucesso");
+            console.log("🎥 Vídeo iniciado com sucesso");
             setLoading(false);
           } catch (playError) {
-            console.error("Erro ao reproduzir vídeo:", playError);
+            console.error("❌ Erro ao reproduzir vídeo:", playError);
             toast.error("Erro ao iniciar vídeo da câmera");
             setLoading(false);
           }
         };
       }
     } catch (error: any) {
-      console.error("Erro ao acessar câmera:", error);
+      console.error("❌ Erro ao acessar câmera:", error);
       
       if (error.name === "NotAllowedError") {
-        toast.error("Permissão de câmera negada. Por favor, permita o acesso à câmera.");
+        toast.error("🚫 Permissão de câmera negada. Por favor, permita o acesso à câmera.");
       } else if (error.name === "NotFoundError") {
-        toast.error("Nenhuma câmera encontrada no dispositivo.");
+        toast.error("📷 Nenhuma câmera encontrada no dispositivo.");
       } else if (error.name === "NotReadableError") {
-        toast.error("Câmera está em uso por outro aplicativo.");
+        toast.error("⚠️ Câmera em uso por outro aplicativo.");
       } else {
-        toast.error("Erro ao acessar câmera. Verifique se está usando HTTPS ou localhost.");
+        toast.error("❌ Erro ao acessar câmera. Verifique se está usando HTTPS ou localhost.");
       }
       
       setLoading(false);
