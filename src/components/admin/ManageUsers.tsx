@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { UserPlus, Trash2, Loader2 } from "lucide-react";
+import { createUserSchema } from "@/lib/validation";
+import { z } from "zod";
 
 interface ManageUsersProps {
   onUpdate: () => void;
@@ -64,9 +66,22 @@ const ManageUsers = ({ onUpdate }: ManageUsersProps) => {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.password || !formData.fullName || !formData.registrationNumber) {
-      toast.error("Preencha todos os campos obrigatórios");
-      return;
+    // Validate form data
+    try {
+      createUserSchema.parse({
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.fullName,
+        registrationNumber: formData.registrationNumber,
+        role: formData.role,
+        classId: formData.classId || undefined,
+        teacherClasses: formData.teacherClasses,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+        return;
+      }
     }
 
     setLoading(true);

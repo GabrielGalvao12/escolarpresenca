@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2, GraduationCap } from "lucide-react";
 import SignupFaceCapture from "@/components/profile/SignupFaceCapture";
+import { signUpSchema, signInSchema, faceDescriptorSchema } from "@/lib/validation";
+import { z } from "zod";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -56,14 +58,35 @@ const Auth = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.password || !formData.fullName || !formData.registrationNumber) {
-      toast.error("Por favor, preencha todos os campos");
-      return;
+    // Validate form data
+    try {
+      signUpSchema.parse({
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.fullName,
+        registrationNumber: formData.registrationNumber,
+        classId: formData.classId || undefined,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+        return;
+      }
     }
 
+    // Validate face descriptor
     if (!faceDescriptor) {
       toast.error("Por favor, cadastre sua foto facial antes de continuar");
       return;
+    }
+
+    try {
+      faceDescriptorSchema.parse(faceDescriptor);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error("Dados biométricos inválidos. Por favor, capture sua foto novamente.");
+        return;
+      }
     }
 
     setLoading(true);
@@ -119,9 +142,17 @@ const Auth = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.password) {
-      toast.error("Por favor, preencha email e senha");
-      return;
+    // Validate form data
+    try {
+      signInSchema.parse({
+        email: formData.email,
+        password: formData.password,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+        return;
+      }
     }
 
     setLoading(true);
