@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, GraduationCap, UserCog, BookOpen, MapPin } from "lucide-react";
 import ManageUsers from "@/components/admin/ManageUsers";
 import ManageClasses from "@/components/admin/ManageClasses";
+import ManageTeacherClasses from "@/components/admin/ManageTeacherClasses";
 import SchoolLocationConfig from "@/components/admin/SchoolLocationConfig";
 import AttendanceMap from "@/components/teacher/AttendanceMap";
 import AttendanceList from "@/components/teacher/AttendanceList";
@@ -119,9 +120,10 @@ const AdminDashboard = () => {
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="users">Usuários</TabsTrigger>
           <TabsTrigger value="classes">Turmas</TabsTrigger>
+          <TabsTrigger value="teachers">Prof/Turmas</TabsTrigger>
           <TabsTrigger value="location">Localização</TabsTrigger>
           <TabsTrigger value="attendances">Presenças</TabsTrigger>
         </TabsList>
@@ -132,6 +134,10 @@ const AdminDashboard = () => {
 
         <TabsContent value="classes" className="space-y-6">
           <ManageClasses onUpdate={loadStats} />
+        </TabsContent>
+
+        <TabsContent value="teachers" className="space-y-6">
+          <ManageTeacherClasses />
         </TabsContent>
 
         <TabsContent value="location" className="space-y-6">

@@ -26,6 +26,7 @@ const ManageUsers = ({ onUpdate }: ManageUsersProps) => {
     registrationNumber: "",
     role: "teacher",
     classId: "",
+    teacherClasses: [] as string[],
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -101,6 +102,15 @@ const ManageUsers = ({ onUpdate }: ManageUsersProps) => {
             .eq("user_id", authData.user.id);
         }
 
+        // Assign teacher to classes if role is teacher
+        if (formData.role === "teacher" && formData.teacherClasses.length > 0) {
+          const assignments = formData.teacherClasses.map(classId => ({
+            teacher_id: authData.user.id,
+            class_id: classId,
+          }));
+          await supabase.from("teacher_classes").insert(assignments);
+        }
+
         toast.success(`${formData.role === "teacher" ? "Professor" : "Aluno"} criado com sucesso!`);
         setIsDialogOpen(false);
         setFormData({
@@ -110,6 +120,7 @@ const ManageUsers = ({ onUpdate }: ManageUsersProps) => {
           registrationNumber: "",
           role: "teacher",
           classId: "",
+          teacherClasses: [],
         });
         loadUsers();
         onUpdate();
@@ -254,6 +265,49 @@ const ManageUsers = ({ onUpdate }: ManageUsersProps) => {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                  )}
+                  {formData.role === "teacher" && (
+                    <div className="space-y-2">
+                      <Label>Turmas do Professor</Label>
+                      <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
+                        {classes.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">Nenhuma turma disponível</p>
+                        ) : (
+                          classes.map((cls) => (
+                            <div key={cls.id} className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id={`teacher-class-${cls.id}`}
+                                checked={formData.teacherClasses.includes(cls.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setFormData({
+                                      ...formData,
+                                      teacherClasses: [...formData.teacherClasses, cls.id]
+                                    });
+                                  } else {
+                                    setFormData({
+                                      ...formData,
+                                      teacherClasses: formData.teacherClasses.filter(id => id !== cls.id)
+                                    });
+                                  }
+                                }}
+                                className="h-4 w-4 rounded border-input"
+                              />
+                              <label
+                                htmlFor={`teacher-class-${cls.id}`}
+                                className="text-sm cursor-pointer"
+                              >
+                                {cls.name}
+                              </label>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Selecione as turmas que este professor poderá gerenciar
+                      </p>
                     </div>
                   )}
                 </div>

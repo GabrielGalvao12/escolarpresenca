@@ -74,19 +74,37 @@ const TeacherDashboard = () => {
   };
 
   const loadData = async () => {
-    // Load all profiles
-    const { data: profilesData } = await supabase
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Get teacher's assigned classes
+    const { data: teacherClasses } = await supabase
+      .from("teacher_classes")
+      .select("class_id")
+      .eq("teacher_id", user.id);
+
+    // Load profiles from assigned classes only
+    let profilesQuery = supabase
       .from("profiles")
       .select("*")
       .order("full_name");
+
+    // Filter by assigned classes if teacher has specific assignments
+    if (teacherClasses && teacherClasses.length > 0) {
+      const classIds = teacherClasses.map(tc => tc.class_id);
+      profilesQuery = profilesQuery.in("class_id", classIds);
+    }
+
+    const { data: profilesData } = await profilesQuery;
 
     if (profilesData) {
       setProfiles(profilesData);
     }
 
-    // Load today's attendances
+    // Load attendances from assigned classes
     const today = new Date().toISOString().split("T")[0];
-    const { data: attendancesData } = await supabase
+    let attendancesQuery = supabase
       .from("attendances")
       .select(`
         *,
@@ -98,6 +116,14 @@ const TeacherDashboard = () => {
       `)
       .order("attendance_date", { ascending: false })
       .order("attendance_time", { ascending: false });
+
+    // Filter by assigned classes if teacher has specific assignments
+    if (teacherClasses && teacherClasses.length > 0) {
+      const classIds = teacherClasses.map(tc => tc.class_id);
+      attendancesQuery = attendancesQuery.in("profiles.class_id", classIds);
+    }
+
+    const { data: attendancesData } = await attendancesQuery;
 
     if (attendancesData) {
       setAllAttendances(attendancesData);
