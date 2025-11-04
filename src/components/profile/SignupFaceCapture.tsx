@@ -51,14 +51,27 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
   const startVideo = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" },
+        video: { 
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
       });
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         setStream(mediaStream);
+        
+        // Ensure video plays
+        try {
+          await videoRef.current.play();
+          setLoading(false);
+        } catch (playError) {
+          console.error("Error playing video:", playError);
+          toast.error("Erro ao iniciar vídeo da câmera");
+          setLoading(false);
+        }
       }
-      setLoading(false);
     } catch (error) {
       console.error("Error accessing camera:", error);
       toast.error("Erro ao acessar câmera. Verifique as permissões.");
@@ -67,11 +80,18 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
   };
 
   const captureFace = async () => {
-    if (!videoRef.current || !canvasRef.current || !modelsLoaded) return;
+    if (!videoRef.current || !canvasRef.current || !modelsLoaded) {
+      toast.error("Câmera ou modelos não estão prontos");
+      return;
+    }
 
     setCapturing(true);
+    toast.info("Detectando rosto...");
 
     try {
+      // Pause video during capture
+      videoRef.current.pause();
+
       const detection = await faceapi
         .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
         .withFaceLandmarks()
@@ -80,8 +100,25 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
       if (!detection) {
         toast.error("Nenhum rosto detectado. Posicione seu rosto na câmera e tente novamente.");
         setCapturing(false);
+        // Resume video
+        if (videoRef.current) {
+          videoRef.current.play();
+        }
         return;
       }
+
+      // Draw the detected face on canvas for preview
+      const canvas = canvasRef.current;
+      const displaySize = { 
+        width: videoRef.current.videoWidth, 
+        height: videoRef.current.videoHeight 
+      };
+      faceapi.matchDimensions(canvas, displaySize);
+      
+      const resizedDetections = faceapi.resizeResults(detection, displaySize);
+      canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
+      faceapi.draw.drawDetections(canvas, resizedDetections);
+      faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
 
       const descriptor = Array.from(detection.descriptor);
       
@@ -96,8 +133,12 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
       toast.success("Foto facial capturada com sucesso!");
     } catch (error) {
       console.error("Error capturing face:", error);
-      toast.error("Erro ao processar rosto");
+      toast.error("Erro ao processar rosto. Tente novamente.");
       setCapturing(false);
+      // Resume video on error
+      if (videoRef.current) {
+        videoRef.current.play();
+      }
     }
   };
 
@@ -167,13 +208,16 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
         {loading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
             <Loader2 className="w-8 h-8 animate-spin text-white" />
-            <p className="text-white text-sm">Carregando câmera...</p>
+            <p className="text-white text-sm">
+              {!modelsLoaded ? "Carregando modelos de reconhecimento..." : "Iniciando câmera..."}
+            </p>
           </div>
         ) : (
           <>
             <video
               ref={videoRef}
               autoPlay
+              playsInline
               muted
               className="w-full h-full object-cover"
               onLoadedMetadata={() => {
@@ -224,12 +268,12 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
           {capturing ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Capturando...
+              Detectando rosto...
             </>
           ) : (
             <>
               <Camera className="mr-2 h-4 w-4" />
-              Capturar
+              {modelsLoaded ? "Capturar Foto" : "Carregando..."}
             </>
           )}
         </Button>
