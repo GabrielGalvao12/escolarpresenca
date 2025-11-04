@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, GraduationCap, UserCog, BookOpen } from "lucide-react";
+import { Users, GraduationCap, UserCog, BookOpen, MapPin } from "lucide-react";
 import ManageUsers from "@/components/admin/ManageUsers";
 import ManageClasses from "@/components/admin/ManageClasses";
+import SchoolLocationConfig from "@/components/admin/SchoolLocationConfig";
 import AttendanceMap from "@/components/teacher/AttendanceMap";
 import AttendanceList from "@/components/teacher/AttendanceList";
 
@@ -118,9 +119,10 @@ const AdminDashboard = () => {
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="users">Usuários</TabsTrigger>
           <TabsTrigger value="classes">Turmas</TabsTrigger>
+          <TabsTrigger value="location">Localização</TabsTrigger>
           <TabsTrigger value="attendances">Presenças</TabsTrigger>
         </TabsList>
 
@@ -130,6 +132,10 @@ const AdminDashboard = () => {
 
         <TabsContent value="classes" className="space-y-6">
           <ManageClasses onUpdate={loadStats} />
+        </TabsContent>
+
+        <TabsContent value="location" className="space-y-6">
+          <SchoolLocationConfig />
         </TabsContent>
 
         <TabsContent value="attendances" className="space-y-6">
