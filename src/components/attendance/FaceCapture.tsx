@@ -25,10 +25,15 @@ const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
 
   useEffect(() => {
     if (!showDiagnostic) {
-      (async () => {
-        await loadModels();
-        await startVideo();
-      })();
+      // Aguardar o próximo ciclo de renderização para garantir que o elemento de vídeo existe
+      const timer = setTimeout(() => {
+        (async () => {
+          await loadModels();
+          await startVideo();
+        })();
+      }, 100);
+      
+      return () => clearTimeout(timer);
     }
     return () => {
       if (stream) {
@@ -75,14 +80,24 @@ const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
       setCameraStatus('connecting');
       console.log("🎥 Solicitando permissão de câmera...");
       
+      // Aguardar um pouco mais para garantir que o elemento está no DOM
+      let attempts = 0;
+      while (!videoRef.current && attempts < 10) {
+        console.log(`⏳ Aguardando elemento de vídeo (tentativa ${attempts + 1})...`);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      
       // Verificar se videoRef está disponível
       if (!videoRef.current) {
-        console.error("❌ Elemento de vídeo não está disponível");
-        toast.error("Erro: Elemento de vídeo não encontrado. Recarregue a página.");
+        console.error("❌ Elemento de vídeo não está disponível após 10 tentativas");
+        toast.error("Erro: Elemento de vídeo não encontrado. Feche e abra a câmera novamente.");
         setCameraStatus('error');
         setLoading(false);
         return;
       }
+      
+      console.log("✅ Elemento de vídeo encontrado");
       
       // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -135,6 +150,17 @@ const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
               setLoading(false);
             }
           };
+          
+          // Timeout de segurança
+          setTimeout(() => {
+            if (loading && videoRef.current && videoRef.current.readyState < 2) {
+              console.warn("⚠️ Timeout esperando loadedmetadata, forçando play...");
+              videoRef.current.play().catch(err => {
+                console.error("❌ Erro no play forçado:", err);
+                setCameraStatus('error');
+              });
+            }
+          }, 3000);
         }
       } else {
         console.error("❌ videoRef.current não está disponível após obter stream");
