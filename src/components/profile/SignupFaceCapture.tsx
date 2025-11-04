@@ -20,6 +20,7 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
   const [capturing, setCapturing] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const [cameraStatus, setCameraStatus] = useState<'idle' | 'connecting' | 'ready' | 'error'>('idle');
 
   useEffect(() => {
     if (showCamera && !showDiagnostic) {
@@ -70,23 +71,29 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
 
   const startVideo = async () => {
     try {
+      setCameraStatus('connecting');
       console.log("🎥 Solicitando permissão de câmera...");
       
       // Verificar se videoRef está disponível
       if (!videoRef.current) {
         console.error("❌ Elemento de vídeo não está disponível");
-        toast.error("Erro ao inicializar câmera. Tente novamente.");
+        toast.error("Erro: Elemento de vídeo não encontrado. Recarregue a página.");
+        setCameraStatus('error');
         setLoading(false);
         return;
       }
       
       // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        toast.error("Seu navegador não suporta acesso à câmera. Use HTTPS ou localhost.");
+        const errorMsg = "Seu navegador não suporta acesso à câmera ou você não está em HTTPS/localhost.";
+        console.error("❌", errorMsg);
+        toast.error(errorMsg);
+        setCameraStatus('error');
         setLoading(false);
         return;
       }
 
+      console.log("📱 Solicitando stream de vídeo...");
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: "user",
@@ -106,9 +113,10 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
         try {
           await videoRef.current.play();
           console.log("🎥 Vídeo iniciado com sucesso (play direto)");
+          setCameraStatus('ready');
           setLoading(false);
         } catch (playError) {
-          console.log("⚠️ Play direto falhou, aguardando loadedmetadata...");
+          console.log("⚠️ Play direto falhou, aguardando loadedmetadata...", playError);
           
           // Fallback: aguardar loadedmetadata
           videoRef.current.onloadedmetadata = async () => {
@@ -116,31 +124,58 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
               if (videoRef.current) {
                 await videoRef.current.play();
                 console.log("🎥 Vídeo iniciado com sucesso (após loadedmetadata)");
+                setCameraStatus('ready');
                 setLoading(false);
               }
             } catch (metadataPlayError) {
               console.error("❌ Erro ao reproduzir vídeo:", metadataPlayError);
-              toast.error("Erro ao iniciar vídeo da câmera");
+              toast.error("Erro ao iniciar vídeo. Tente novamente ou use outro navegador.");
+              setCameraStatus('error');
               setLoading(false);
             }
           };
         }
       } else {
         console.error("❌ videoRef.current não está disponível após obter stream");
-        toast.error("Erro ao inicializar vídeo");
+        toast.error("Erro ao inicializar vídeo. Recarregue a página.");
+        setCameraStatus('error');
         setLoading(false);
       }
     } catch (error: any) {
       console.error("❌ Erro ao acessar câmera:", error);
+      console.error("Erro completo:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      
+      setCameraStatus('error');
       
       if (error.name === "NotAllowedError") {
-        toast.error("🚫 Permissão de câmera negada. Por favor, permita o acesso à câmera.");
+        toast.error("🚫 Permissão de câmera negada. Clique no ícone de câmera na barra de endereço e permita o acesso.");
       } else if (error.name === "NotFoundError") {
-        toast.error("📷 Nenhuma câmera encontrada no dispositivo.");
+        toast.error("📷 Nenhuma câmera encontrada. Conecte uma câmera e tente novamente.");
       } else if (error.name === "NotReadableError") {
-        toast.error("⚠️ Câmera em uso por outro aplicativo.");
+        toast.error("⚠️ Câmera em uso por outro aplicativo. Feche outros programas que usam a câmera.");
+      } else if (error.name === "OverconstrainedError") {
+        toast.error("⚙️ Configurações de câmera não suportadas. Tentando com configurações padrão...");
+        // Tentar novamente com configurações mais simples
+        try {
+          const simpleStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          if (videoRef.current) {
+            videoRef.current.srcObject = simpleStream;
+            setStream(simpleStream);
+            await videoRef.current.play();
+            setCameraStatus('ready');
+            setLoading(false);
+            toast.success("Câmera iniciada com configurações simplificadas");
+            return;
+          }
+        } catch (retryError) {
+          console.error("Erro na segunda tentativa:", retryError);
+        }
       } else {
-        toast.error("❌ Erro ao acessar câmera. Verifique se está usando HTTPS ou localhost.");
+        toast.error(`❌ Erro ao acessar câmera: ${error.message || 'Erro desconhecido'}. Verifique se está em HTTPS/localhost.`);
       }
       
       setLoading(false);
@@ -291,8 +326,38 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
     );
   }
 
+  const getCameraStatusIndicator = () => {
+    switch (cameraStatus) {
+      case 'connecting':
+        return (
+          <div className="flex items-center gap-2 px-3 py-2 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
+            <Loader2 className="w-4 h-4 animate-spin text-yellow-500" />
+            <span className="text-sm font-medium text-yellow-500">Conectando câmera...</span>
+          </div>
+        );
+      case 'ready':
+        return (
+          <div className="flex items-center gap-2 px-3 py-2 bg-green-500/20 border border-green-500/30 rounded-lg">
+            <CheckCircle2 className="w-4 h-4 text-green-500" />
+            <span className="text-sm font-medium text-green-500">Câmera pronta</span>
+          </div>
+        );
+      case 'error':
+        return (
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-500/20 border border-red-500/30 rounded-lg">
+            <X className="w-4 h-4 text-red-500" />
+            <span className="text-sm font-medium text-red-500">Erro na câmera</span>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="space-y-3">
+      {getCameraStatusIndicator()}
+      
       <div className="relative rounded-lg overflow-hidden bg-black aspect-video border-2 border-primary/20">
         {loading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
