@@ -56,6 +56,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "attendances_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       classes: {
@@ -208,9 +215,111 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      attendances_safe: {
+        Row: {
+          attendance_date: string | null
+          attendance_time: string | null
+          created_at: string | null
+          distance_meters: number | null
+          id: string | null
+          is_valid: boolean | null
+          latitude: number | null
+          longitude: number | null
+          student_id: string | null
+        }
+        Insert: {
+          attendance_date?: string | null
+          attendance_time?: string | null
+          created_at?: string | null
+          distance_meters?: number | null
+          id?: string | null
+          is_valid?: boolean | null
+          latitude?: never
+          longitude?: never
+          student_id?: string | null
+        }
+        Update: {
+          attendance_date?: string | null
+          attendance_time?: string | null
+          created_at?: string | null
+          distance_meters?: number | null
+          id?: string | null
+          is_valid?: boolean | null
+          latitude?: never
+          longitude?: never
+          student_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendances_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendances_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles_safe: {
+        Row: {
+          class_id: string | null
+          created_at: string | null
+          email: string | null
+          face_descriptors: Json | null
+          face_photo_url: string | null
+          full_name: string | null
+          id: string | null
+          registration_number: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          class_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          face_descriptors?: never
+          face_photo_url?: never
+          full_name?: string | null
+          id?: string | null
+          registration_number?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          class_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          face_descriptors?: never
+          face_photo_url?: never
+          full_name?: string | null
+          id?: string | null
+          registration_number?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      can_view_biometric_data: {
+        Args: { profile_id: string }
+        Returns: boolean
+      }
+      can_view_location_data: {
+        Args: { attendance_student_id: string }
+        Returns: boolean
+      }
       get_safe_profile: {
         Args: { profile_row: Database["public"]["Tables"]["profiles"]["Row"] }
         Returns: {
