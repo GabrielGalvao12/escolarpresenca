@@ -21,7 +21,10 @@ const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
 
   useEffect(() => {
-    loadModels();
+    (async () => {
+      await loadModels();
+      await startVideo();
+    })();
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
@@ -31,7 +34,8 @@ const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
 
   const loadModels = async () => {
     try {
-      const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model";
+      console.log("Carregando modelos de reconhecimento facial...");
+      const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/models";
       
       await Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -39,11 +43,12 @@ const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
       ]);
       
+      console.log("Modelos carregados com sucesso");
       setModelsLoaded(true);
-      await startVideo();
     } catch (error) {
       console.error("Error loading models:", error);
       toast.error("Erro ao carregar modelos de reconhecimento facial");
+      setLoading(false);
     }
   };
 
