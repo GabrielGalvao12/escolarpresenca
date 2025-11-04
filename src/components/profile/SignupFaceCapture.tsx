@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import * as faceapi from "face-api.js";
 import { Camera, Loader2, CheckCircle2, X } from "lucide-react";
+import CameraDiagnostic from "@/components/camera/CameraDiagnostic";
 
 interface SignupFaceCaptureProps {
   onCapture: (descriptor: number[]) => void;
@@ -13,6 +14,7 @@ interface SignupFaceCaptureProps {
 const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCaptureProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [showDiagnostic, setShowDiagnostic] = useState(false);
   const [loading, setLoading] = useState(true);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [capturing, setCapturing] = useState(false);
@@ -20,7 +22,7 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
   const [showCamera, setShowCamera] = useState(false);
 
   useEffect(() => {
-    if (showCamera) {
+    if (showCamera && !showDiagnostic) {
       (async () => {
         await loadModels();
         await startVideo();
@@ -31,7 +33,7 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [showCamera]);
+  }, [showCamera, showDiagnostic]);
 
   const loadModels = async () => {
     try {
@@ -140,7 +142,13 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
       videoRef.current.pause();
 
       const detection = await faceapi
-        .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
+        .detectSingleFace(
+          videoRef.current, 
+          new faceapi.TinyFaceDetectorOptions({
+            inputSize: 512,
+            scoreThreshold: 0.5
+          })
+        )
         .withFaceLandmarks()
         .withFaceDescriptor();
 
@@ -237,7 +245,10 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
           </div>
           <Button
             type="button"
-            onClick={() => setShowCamera(true)}
+            onClick={() => {
+              setShowDiagnostic(true);
+              setShowCamera(true);
+            }}
             className="w-full"
             variant="outline"
           >
@@ -246,6 +257,18 @@ const SignupFaceCapture = ({ onCapture, onReset, isCaptured }: SignupFaceCapture
           </Button>
         </div>
       </div>
+    );
+  }
+
+  if (showDiagnostic) {
+    return (
+      <CameraDiagnostic 
+        onSuccess={() => setShowDiagnostic(false)} 
+        onCancel={() => {
+          setShowDiagnostic(false);
+          setShowCamera(false);
+        }}
+      />
     );
   }
 

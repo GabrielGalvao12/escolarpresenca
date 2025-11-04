@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import * as faceapi from "face-api.js";
 import { Camera, Loader2, X } from "lucide-react";
+import CameraDiagnostic from "@/components/camera/CameraDiagnostic";
 
 interface FaceCaptureProps {
   userId: string;
@@ -15,22 +16,25 @@ interface FaceCaptureProps {
 const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [showDiagnostic, setShowDiagnostic] = useState(true);
   const [loading, setLoading] = useState(true);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
   useEffect(() => {
-    (async () => {
-      await loadModels();
-      await startVideo();
-    })();
+    if (!showDiagnostic) {
+      (async () => {
+        await loadModels();
+        await startVideo();
+      })();
+    }
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, []);
+  }, [showDiagnostic]);
 
   const loadModels = async () => {
     try {
@@ -131,9 +135,15 @@ const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
     setCapturing(true);
 
     try {
-      // Detect face
+      // Detect face with improved settings
       const detection = await faceapi
-        .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
+        .detectSingleFace(
+          videoRef.current, 
+          new faceapi.TinyFaceDetectorOptions({
+            inputSize: 512,
+            scoreThreshold: 0.5
+          })
+        )
         .withFaceLandmarks()
         .withFaceDescriptor();
 
@@ -156,12 +166,15 @@ const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
         return;
       }
 
-      // Compare faces
+      // Compare faces with improved threshold
       const savedDescriptor = new Float32Array(Object.values(profile.face_descriptors));
       const distance = faceapi.euclideanDistance(savedDescriptor, detection.descriptor);
 
-      if (distance > 0.6) {
-        toast.error("Rosto não reconhecido. Tente novamente.");
+      console.log("Face recognition distance:", distance);
+
+      // Lower threshold = stricter matching (0.4 is more strict than 0.6)
+      if (distance > 0.5) {
+        toast.error(`Rosto não reconhecido (confiança: ${(1 - distance).toFixed(2)}). Tente novamente com melhor iluminação.`);
         setCapturing(false);
         return;
       }
@@ -249,6 +262,15 @@ const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
 
     return R * c;
   };
+
+  if (showDiagnostic) {
+    return (
+      <CameraDiagnostic 
+        onSuccess={() => setShowDiagnostic(false)} 
+        onCancel={onCancel}
+      />
+    );
+  }
 
   return (
     <Card className="w-full">
