@@ -73,9 +73,12 @@ const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
     try {
       console.log("🎥 Solicitando permissão de câmera...");
       
-      // Verificar se está em ambiente seguro
-      if (window.location.protocol !== "https:" && window.location.hostname !== "localhost") {
-        toast.warning("⚠️ A câmera funciona melhor em HTTPS ou localhost");
+      // Verificar se videoRef está disponível
+      if (!videoRef.current) {
+        console.error("❌ Elemento de vídeo não está disponível");
+        toast.error("Erro ao inicializar câmera. Tente novamente.");
+        setLoading(false);
+        return;
       }
       
       // Check if getUserMedia is supported
@@ -93,24 +96,40 @@ const FaceCapture = ({ userId, onSuccess, onCancel }: FaceCaptureProps) => {
         },
       });
       
-      console.log("✅ Permissão concedida, iniciando vídeo...");
+      console.log("✅ Permissão concedida, stream obtido");
+      setStream(mediaStream);
       
       if (videoRef.current) {
+        console.log("📹 Atribuindo stream ao elemento de vídeo...");
         videoRef.current.srcObject = mediaStream;
-        setStream(mediaStream);
         
-        // Wait for video metadata to load
-        videoRef.current.onloadedmetadata = async () => {
-          try {
-            await videoRef.current!.play();
-            console.log("🎥 Vídeo iniciado com sucesso");
-            setLoading(false);
-          } catch (playError) {
-            console.error("❌ Erro ao reproduzir vídeo:", playError);
-            toast.error("Erro ao iniciar vídeo da câmera");
-            setLoading(false);
-          }
-        };
+        // Tentar iniciar imediatamente
+        try {
+          await videoRef.current.play();
+          console.log("🎥 Vídeo iniciado com sucesso (play direto)");
+          setLoading(false);
+        } catch (playError) {
+          console.log("⚠️ Play direto falhou, aguardando loadedmetadata...");
+          
+          // Fallback: aguardar loadedmetadata
+          videoRef.current.onloadedmetadata = async () => {
+            try {
+              if (videoRef.current) {
+                await videoRef.current.play();
+                console.log("🎥 Vídeo iniciado com sucesso (após loadedmetadata)");
+                setLoading(false);
+              }
+            } catch (metadataPlayError) {
+              console.error("❌ Erro ao reproduzir vídeo:", metadataPlayError);
+              toast.error("Erro ao iniciar vídeo da câmera");
+              setLoading(false);
+            }
+          };
+        }
+      } else {
+        console.error("❌ videoRef.current não está disponível após obter stream");
+        toast.error("Erro ao inicializar vídeo");
+        setLoading(false);
       }
     } catch (error: any) {
       console.error("❌ Erro ao acessar câmera:", error);
