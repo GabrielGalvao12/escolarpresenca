@@ -8,11 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2, GraduationCap } from "lucide-react";
+import SignupFaceCapture from "@/components/profile/SignupFaceCapture";
 
 const Auth = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [classes, setClasses] = useState<any[]>([]);
+  const [faceDescriptor, setFaceDescriptor] = useState<number[] | null>(null);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -59,6 +61,11 @@ const Auth = () => {
       return;
     }
 
+    if (!faceDescriptor) {
+      toast.error("Por favor, cadastre sua foto facial antes de continuar");
+      return;
+    }
+
     setLoading(true);
     try {
       const { data: authData, error } = await supabase.auth.signUp({
@@ -75,15 +82,33 @@ const Auth = () => {
 
       if (error) throw error;
 
-      // Update profile with class if provided
-      if (authData.user && formData.classId) {
+      // Update profile with class and face descriptor
+      if (authData.user) {
+        const updateData: any = { 
+          face_descriptors: faceDescriptor 
+        };
+        
+        if (formData.classId) {
+          updateData.class_id = formData.classId;
+        }
+
         await supabase
           .from("profiles")
-          .update({ class_id: formData.classId })
+          .update(updateData)
           .eq("id", authData.user.id);
       }
 
       toast.success("Cadastro realizado com sucesso! Faça login para continuar.");
+      
+      // Reset form and face descriptor
+      setFormData({
+        email: "",
+        password: "",
+        fullName: "",
+        registrationNumber: "",
+        classId: "",
+      });
+      setFaceDescriptor(null);
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar conta");
     } finally {
@@ -237,7 +262,21 @@ const Auth = () => {
                     ))}
                   </select>
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                
+                <div className="space-y-2">
+                  <Label>Cadastro Facial *</Label>
+                  <SignupFaceCapture
+                    onCapture={setFaceDescriptor}
+                    onReset={() => setFaceDescriptor(null)}
+                    isCaptured={!!faceDescriptor}
+                  />
+                </div>
+
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={loading || !faceDescriptor}
+                >
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -247,6 +286,12 @@ const Auth = () => {
                     "Criar Conta"
                   )}
                 </Button>
+                
+                {!faceDescriptor && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    ⚠️ Você precisa cadastrar seu rosto para concluir o registro
+                  </p>
+                )}
               </form>
             </TabsContent>
           </Tabs>

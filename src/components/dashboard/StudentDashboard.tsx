@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,6 @@ interface StudentDashboardProps {
 }
 
 const StudentDashboard = ({ userId }: StudentDashboardProps) => {
-  const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [attendanceToday, setAttendanceToday] = useState<any>(null);
@@ -52,8 +50,7 @@ const StudentDashboard = ({ userId }: StudentDashboardProps) => {
 
   const handleRegisterAttendance = () => {
     if (!profile?.face_descriptors) {
-      toast.error("Você precisa cadastrar seu rosto primeiro!");
-      navigate("/profile-setup");
+      toast.error("Seu cadastro facial não foi concluído. Entre em contato com a administração.");
       return;
     }
     setShowCamera(true);
@@ -101,12 +98,12 @@ const StudentDashboard = ({ userId }: StudentDashboardProps) => {
             ) : (
               <>
                 {!profile.face_descriptors && (
-                  <div className="flex items-start gap-3 p-4 bg-accent/20 rounded-lg border border-accent">
-                    <AlertCircle className="w-6 h-6 text-accent flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg dark:bg-yellow-950 dark:border-yellow-900">
+                    <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
                     <div className="space-y-1">
-                      <p className="font-semibold text-accent">Cadastre seu rosto primeiro!</p>
-                      <p className="text-sm text-muted-foreground">
-                        Você precisa cadastrar seu rosto para registrar presença.
+                      <p className="font-semibold text-yellow-800 dark:text-yellow-200">Cadastro facial pendente</p>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                        Seu cadastro facial não foi concluído durante o registro. Entre em contato com a administração para regularizar sua situação.
                       </p>
                     </div>
                   </div>
