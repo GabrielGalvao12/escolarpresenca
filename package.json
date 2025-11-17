@@ -1,11 +1,18 @@
 {
+<<<<<<< HEAD
   "name": "vite_react_shadcn_ts",
   "private": true,
   "version": "0.0.0",
+=======
+  "name": "escolarpresenca",
+  "version": "1.0.0",
+  "description": "Sistema de presença escolar",
+>>>>>>> 74d3aab (Corrige dependências, vulnerabilidades e configura PostCSS para ambiente local)
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+<<<<<<< HEAD
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -85,5 +92,19 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.21"
+=======
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react-swc": "^3.11.0",
+    "autoprefixer": "^10.4.0",
+    "glob": "12.0.0",
+    "tailwindcss": "^3.4.0",
+    "vite": "^7.2.2"
+>>>>>>> 74d3aab (Corrige dependências, vulnerabilidades e configura PostCSS para ambiente local)
   }
 }
